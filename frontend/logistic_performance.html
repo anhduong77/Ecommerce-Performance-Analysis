@@ -1,0 +1,234 @@
+<!DOCTYPE html> 
+<html>
+    <head>
+        <title>Logistics Performance</title>
+        <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>        
+    </head>
+        <style>
+        .dashboard-wrapper {
+                display: flex;
+                flex-direction: row; 
+                gap: 20px;           
+                padding: 20px;
+                align-items: flex-start;
+        }
+
+        #treemap {
+            flex: 0 0 300px; 
+            background: #f9f9f9;
+        }
+
+        .revenue-chart{
+            flex: 1
+        }
+        .right-panel {
+            display: flex;
+            flex-direction: column; 
+            gap: 20px;
+            flex: 1;
+        }
+        .revenue-chart-container {
+            height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+        }
+
+
+        .average-shipment-time {
+            width: 1000px;
+            overflow-x: scroll;
+            border: 1px solid #ddd;
+        }
+        </style>
+
+    <body>
+        <div class="dashboard-wrapper">
+            <div id="treemap"></div>
+
+            <div class="right-panel">
+                <div class="revenue-chart-container">
+                    <div class="revenue-chart"></div>
+                </div>
+
+                <div class="average-shipment-time"></div>
+            </div>
+        </div>
+            
+        </div>
+        <script>
+            fetch("http://localhost:4000/shipments")
+            .then(res => res.json())
+            .then(data => {
+                console.log(data);
+                filteredData = data.filter(d => (d.geolocation_city && !(d.datediff === null) && !isNaN(d.review_score) && !isNaN(d.price)));
+                drawTreemap(filteredData);
+                drawBarChart(filteredData);
+                drawScatterChart(filteredData);
+            })
+
+        function drawTreemap(data) {
+            d3.select("#treemap").selectAll("*").remove();
+
+            const rolledUpData = d3.rollup(
+                data,
+                v => v.length, 
+                d => d.review_score
+            );
+
+            const hierarchyData = {
+                name: "root",
+                children: Array.from(rolledUpData, ([name, value]) => ({ name, value }))
+            };
+
+            const root = d3.hierarchy(hierarchyData)
+                .sum(d => d.value)
+                .sort((a, b) => b.value - a.value);
+
+            const width = 300, height = 600;
+            
+            d3.treemap()
+                .size([width, height])
+                .paddingInner(2)
+                (root);
+
+            const svg = d3.select("#treemap")
+                .append("svg")
+                .attr("width", width)
+                .attr("height", height)
+                .style("font", "12px sans-serif");
+
+            const colorScale = d3.scaleOrdinal()
+                .domain([1, 2, 3, 4, 5])
+                .range(d3.schemeRdYlGn[5]); 
+
+            const nodes = svg.selectAll("g")
+                .data(root.leaves())
+                .join("g")
+                .attr("transform", d => `translate(${d.x0},${d.y0})`);
+
+            nodes.append("rect")
+                .attr("width", d => d.x1 - d.x0)
+                .attr("height", d => d.y1 - d.y0)
+                .attr("fill", d => colorScale(d.data.name))
+                .attr("stroke", "#fff");
+
+            nodes.append("text")
+                .attr("x", 4)
+                .attr("y", 14)
+                .text(d => d.x1 - d.x0 > 15 ? d.data.name : ""); 
+        }
+        function drawBarChart(data) {
+            const revenueData = Array.from(
+                d3.rollup(data, v => d3.sum(v, d => d.review_score), d => d.geolocation_city),
+                ([city, revenue]) => ({ city, revenue })
+            ).sort((a, b) => b.revenue - a.revenue);
+
+          
+            const barHeight = 25; 
+            const margin = {top: 20, right: 30, bottom: 40, left: 150};
+            
+           
+            const innerHeight = revenueData.length * barHeight;
+            const totalHeight = innerHeight + margin.top + margin.bottom;
+            const width = 700; 
+
+            // 3. Select and Setup SVG
+            d3.select(".revenue-chart").selectAll("*").remove();
+            
+            const svg = d3.select(".revenue-chart").append("svg")
+                        .attr("width", width)
+                        .attr("height", totalHeight) 
+                        .attr("viewBox", `0 0 ${width} ${totalHeight}`);
+
+            const g = svg.append("g")
+                        .attr("transform", `translate(${margin.left},${margin.top})`);
+
+         
+            const scaleY = d3.scaleBand()
+                .domain(revenueData.map(d => d.city))
+                .range([0, innerHeight])
+                .padding(0.2);
+
+            const scaleX = d3.scaleLinear()
+                .domain([0, d3.max(revenueData, d => d.revenue)])
+                .range([0, width - margin.left - margin.right]);
+
+            // 5. Draw
+            g.append("g").call(d3.axisLeft(scaleY));
+            
+            g.append("g").call(d3.axisTop(scaleX));
+
+            g.selectAll("rect")
+                .data(revenueData)
+                .join("rect")
+                .attr("y", d => scaleY(d.city))
+                .attr("x", 0)
+                .attr("height", scaleY.bandwidth())
+                .attr("width", d => scaleX(d.revenue))
+                .attr("fill", "#69b3a2");
+            
+            
+        }
+        function drawScatterChart(data) {
+            // ---- prepare data
+            const shipmentData = Array.from(d3.rollup(data,
+                                            v => d3.mean(v, d => d.datediff),
+                                            d => d.geolocation_city
+            ), ([city, avgDate]) => ({
+                "city": city,
+                "avgDate": avgDate
+            }));
+            console.log("shipment data");
+            console.log(shipmentData);
+
+            const barWidth = 25;
+            const width = barWidth * shipmentData.length + 50, height = 400;
+            const margin = {top: 20, right: 30, bottom: 70, left: 50};
+            const iW = width - margin.right - margin.left;
+            const iH = height - margin.top - margin.bottom;
+            
+            
+
+            svg = d3.select(".average-shipment-time")
+                        .append("svg")
+                        .attr("width", width).attr("height", height);
+            g = svg.append("g").attr("transform", `translate(${margin.right},${margin.top})`);
+
+            const scaleX = d3.scaleBand()
+                        .domain(shipmentData.map(d => d.city))
+                        .range([0, barWidth * shipmentData.length])
+                        .padding(0.4);
+            
+            const scaleY = d3.scaleLinear()
+                        .domain([-90, 70])
+                        .range([iH, 0])
+                        ;
+            const colorScale = d3.scaleSequential()
+                                    .domain([-90, 70])
+                                    .interpolator(d3.interpolateGnBu)
+            g.append("g")
+                .call(d3.axisBottom(scaleX)).attr("transform", `translate(0,${iH})`)
+                .selectAll("text").attr("transform", `rotate(-45)`).style("text-anchor", "end")
+                .attr("font-size", "7");
+            g.append("g")
+                .call(d3.axisLeft(scaleY));
+            g.selectAll("circle")
+                .data(shipmentData)
+                .join("circle")
+                .attr("cx", d => scaleX(d.city))
+                .attr("cy", d => scaleY(d.avgDate))
+                .attr("r", 4)
+                .attr("fill", d => colorScale(d.avgDate))
+            g.append("line")
+                .attr("x1", 0)
+                .attr("x2", iW)
+                .attr("y1", scaleY(0))
+                .attr("y2", scaleY(0))
+                .attr("stroke", "gray")
+                .attr("stroke-width", 1)
+                .attr("stroke-dasharray", "4 2");  
+
+        }
+        </script> 
+    </body>
+</html>

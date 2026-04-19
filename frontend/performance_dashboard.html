@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Performance Overview</title>
+    <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+    <style>
+        :root {
+            --bg-color: #f4f4f4;
+            --card-bg: #ffffff;
+            --header-color: #800000; /* Màu đỏ đô như ảnh */
+            --text-color: #333;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Tiêu đề chính */
+        .dashboard-header {
+            background-color: var(--header-color);
+            color: white;
+            text-align: center;
+            padding: 10px 0;
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+
+        /* Layout Grid chính */
+        .dashboard-container {
+            display: grid;
+            grid-template-columns: 200px 1fr; /* Cột lọc 200px, phần còn lại cho biểu đồ */
+            gap: 20px;
+            padding: 0 20px 20px 20px;
+        }
+
+        /* Cột bên trái (Filters) */
+        .side-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        /* Container bao ngoài của Months card */
+        #month-container {
+            display: flex;
+            flex-direction: column;
+            max-height: 250px; 
+        }
+
+      
+        .scroll-area {
+            overflow-y: auto;  
+            padding-right: 5px;
+            flex-grow: 1;      
+        }
+
+        .scroll-area::-webkit-scrollbar {
+            width: 6px;
+        }
+        .scroll-area::-webkit-scrollbar-thumb {
+            background: #ccc;
+            border-radius: 10px;
+        }
+        .scroll-area::-webkit-scrollbar-thumb:hover {
+            background: #888;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 4px;
+            padding: 15px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .card h3 {
+            margin-top: 0;
+            font-size: 16px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+            color: #555;
+        }
+
+        /* Checkbox Rows */
+        .checkbox-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 4px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        /* Phần bên phải (Charts) */
+        .main-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .chart-container {
+            width: 100%;
+            height: auto;
+            text-align: center;
+        }
+
+        .chart-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        /* Responsive cho SVG */
+        svg {
+            max-width: 100%;
+            height: auto;
+        }
+        .kpi-container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .kpi-card {
+            background: #ffffff;
+            border-radius: 8px;
+            padding: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); /* Đổ bóng mịn hơn */
+            border-left: 5px solid #800000; /* Vạch màu đỏ đô tạo điểm nhấn */
+            text-align: center;
+            transition: transform 0.2s;
+        }
+
+        .kpi-card:hover {
+            transform: translateY(-3px); /* Hiệu ứng nổi lên khi di chuột */
+        }
+
+        .kpi-title {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #666;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .kpi-value {
+            font-size: 2rem;
+            font-weight: 800;
+            color: #2c3e50; /* Màu xanh đen sang trọng */
+            margin: 5px 0;
+        }
+
+        .kpi-subtitle {
+            font-size: 0.75rem;
+            color: #999;
+            font-weight: 600;
+        }
+
+        .tooltip {
+            position: absolute;
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            pointer-events: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            font-size: 12px;
+            color: #333;
+            z-index: 9999;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="dashboard-header">Performance Overview</div>
+
+    <div class="dashboard-container">
+        <div class="side-panel">
+            <div id="month-container" class="card"></div>
+            <div id="year-container" class="card"></div>
+
+            <div class="kpi-container">
+                <div class="kpi-card">
+                    <span class="kpi-title">Gross Merchandise Value</span>
+                    <div id="gmv-val" class="kpi-value"></div>
+                    <span class="kpi-subtitle">GMV (USD)</span>
+                </div>
+
+                <div class="kpi-card">
+                    <span class="kpi-title">Average Order Value</span>
+                    <div id="aov-val" class="kpi-value"></div>
+                    <span class="kpi-subtitle">AOV (USD)</span>
+                </div>
+            </div>
+        </div>
+                
+        <div class="main-panel">
+            <div class="card">
+                <span class="chart-title">Seasonality Detection</span>
+                <div class="seasonality-chart-area chart-container"></div>
+            </div>
+
+            <div class="card">
+                <span class="chart-title">GMV and AOV by YearMonth</span>
+                <div class="revenue-chart-area chart-container"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const years = [2016, 2017, 2018];
+        const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        const monthMap = {"Jan":"01", "Feb":"02", "Mar":"03", "Apr":"04", "May":"05", "Jun":"06", "Jul":"07", "Aug":"08", "Sep":"09", "Oct":"10", "Nov":"11", "Dec":"12"};
+
+        formatTickBox(months, "month-container", "Months");
+        formatTickBox(years, "year-container", "Years");
+
+        function formatTickBox(data, id, label) {
+            const container = d3.select(`#${id}`);
+            
+            // Thêm tiêu đề cố định
+            container.append("h3").text(label);
+            
+
+            const scrollArea = container.append("div")
+                                        .attr("class", "scroll-area")
+                                        .style("max-height", "150px"); // Độ cao bạn muốn cho danh sách
+
+            const rows = scrollArea.selectAll(".checkbox-row")
+                                    .data(data)
+                                    .join("label")
+                                    .attr("class", "checkbox-row");
+
+            rows.append("input")
+                .attr("type", "checkbox")
+                .attr("class", `${id.split("-")[0]}-filter`)
+                .attr("value", d => id === "month-container" ? monthMap[d] : d)
+                .on("change", () => updateDashboard());
+            
+            rows.append("span").text(d => d);
+        }
+
+        let originalData = [];
+        fetch("http://localhost:4000/order-items")
+            .then(res => res.json())
+            .then(data => {
+                originalData = formatData(data);
+                drawSeasonality(originalData);
+                updateDashboard();
+            });
+
+        function formatData(data) {
+            const cleanedData = data.filter(row => row.order_approved_at && !isNaN(row.price));
+            const formatted = cleanedData.map(row => {
+                const date = new Date(row.order_approved_at);
+                return {
+                    year: date.getFullYear().toString(),
+                    month: (date.getMonth() + 1).toString().padStart(2, '0'),
+                    dateStr: `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`,
+                    price: +row.price
+                }
+            });
+
+            const revenue = Array.from(d3.rollup(formatted, 
+                v => ({
+                    revenue: d3.sum(v, d => d.price),
+                    avgRevenue: d3.mean(v, d => d.price),
+                    count: v.length
+                }), 
+                d => d.dateStr
+            ), ([date, v]) => ({ date, ...v }));
+
+            return revenue.sort((a, b) => new Date(a.date) - new Date(b.date));
+        }
+        function drawCard(data) {
+            const totalGMV = d3.sum(data, d => d.revenue);
+            const totalCount = d3.sum(data, d => d.count);
+            const avgOrderValue = totalCount > 0 ? (totalGMV / totalCount) : 0;
+
+            // Định dạng số
+            const formatBig = d3.format(".2s"); // ví dụ: 13M
+            const formatFloat = d3.format(",.2f"); // ví dụ: 132.96
+
+            // Cập nhật GMV với hiệu ứng đổi chữ
+            d3.select("#gmv-val")
+                .transition()
+                .duration(500)
+                .text(formatBig(totalGMV).replace('G', 'B'));
+
+            // Cập nhật AOV
+            d3.select("#aov-val")
+                .transition()
+                .duration(500)
+                .text(formatFloat(avgOrderValue));
+        }
+       
+        const tooltip = d3.select("body").append("div").attr("class", "tooltip").style("opacity", 0);
+
+        function drawBarChart(data) {
+            const width = 650, height = 150;
+            const margin = {top: 20, left: 60, bottom: 50, right: 60};
+            const iW = width - margin.left - margin.right;
+            const iH = height - margin.top - margin.bottom;
+
+            const svg = d3.select('.revenue-chart-area').append('svg').attr('viewBox', `0 0 ${width} ${height}`);
+            const g = svg.append('g').attr("transform", `translate(${margin.left},${margin.top})`);
+
+            const x = d3.scaleBand().domain(data.map(d => d.date)).range([0, iW]).padding(0.3);
+            const yLeft = d3.scaleLinear().domain([0, d3.max(data, d => d.revenue)]).range([iH, 0]);
+            const yRight = d3.scaleLinear().domain([0, d3.max(data, d => d.avgRevenue)]).range([iH, 0]);
+
+            g.append('g').attr("transform", `translate(0,${iH})`).call(d3.axisBottom(x))
+                .selectAll("text").attr("transform", "rotate(-45)").style("text-anchor", "end");
+            g.append('g').call(d3.axisLeft(yLeft).ticks(5).tickFormat(d3.format(".1s")));
+            g.append('g').attr("transform", `translate(${iW},0)`).call(d3.axisRight(yRight).ticks(5));
+
+            // Vẽ Bars với Tooltip
+            g.selectAll('rect').data(data).join('rect')
+                .attr("x", d => x(d.date))
+                .attr("y", d => yLeft(d.revenue))
+                .attr("width", x.bandwidth())
+                .attr("height", d => iH - yLeft(d.revenue))
+                .attr("fill", "#a52a2a")
+                .on("mouseover", (event, d) => {
+                    tooltip.transition().duration(200).style("opacity", 1);
+                    tooltip.html(`<strong>Date: ${d.date}</strong><br/>GMV: ${d3.format(",.2f")(d.revenue)}<br/>AOV: ${d3.format(",.2f")(d.avgRevenue)}`);
+                })
+                .on("mousemove", (event) => {
+                    tooltip.style("left", (event.pageX + 10) + "px").style("top", (event.pageY - 20) + "px");
+                })
+                .on("mouseout", () => {
+                    tooltip.transition().duration(500).style("opacity", 0);
+                });
+
+            const line = d3.line().x(d => x(d.date) + x.bandwidth()/2).y(d => yRight(d.avgRevenue));
+            g.append("path").datum(data).attr("d", line).attr("fill", "none").attr("stroke", "#008080").attr("stroke-width", 2);
+        }
+
+        function drawSeasonality(data) {
+            const globalAvgRevenue = d3.sum(data, d => d.revenue) / d3.sum(data, d => d.count);
+            const monthly = Array.from(d3.rollup(data, 
+                v => (d3.sum(v, d => d.revenue) / d3.sum(v, d => d.count)) / globalAvgRevenue,
+                d => d.date.split("-")[1]
+            ), ([month, avg]) => ({ month, avg })).sort((a,b) => a.month - b.month);
+
+            const width = 650, height = 150;
+            const margin = {top: 20, left: 50, right: 50, bottom: 30};
+            const iW = width - margin.left - margin.right;
+            const iH = height - margin.top - margin.bottom;
+
+            const svg = d3.select(".seasonality-chart-area").append("svg").attr('viewBox', `0 0 ${width} ${height}`);
+            const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+
+            const x = d3.scalePoint().domain(monthly.map(d => d.month)).range([0, iW]);
+            const y = d3.scaleLinear().domain([0.5, 1.5]).range([iH, 0]);
+
+            g.append("g").attr("transform", `translate(0,${iH})`).call(d3.axisBottom(x));
+            g.append("g").call(d3.axisLeft(y).ticks(5));
+
+            
+            g.append("line").attr("x1", 0).attr("x2", iW).attr("y1", y(1)).attr("y2", y(1))
+                .attr("stroke", "#ccc").attr("stroke-dasharray", "2,4");
+
+            const line = d3.line().x(d => x(d.month)).y(d => y(d.avg));
+            g.append("path").datum(monthly).attr("d", line).attr("fill", "none").attr("stroke", "#008080").attr("stroke-width", 2);
+
+            
+            g.selectAll(".dot").data(monthly).enter().append("circle")
+                .attr("class", "dot")
+                .attr("cx", d => x(d.month))
+                .attr("cy", d => y(d.avg))
+                .attr("r", 3)
+                .attr("fill", "#008080")
+                .attr("stroke", "#fff")
+                .on("mouseover", (event, d) => {
+                    tooltip.transition().duration(200).style("opacity", 1);
+                    tooltip.html(`<strong>Month: ${d.month}</strong><br/>Index: ${d3.format(".2f")(d.avg)}`);
+                    d3.select(event.currentTarget).attr("r", 4).attr("stroke-width", 2);
+                })
+                .on("mousemove", (event) => {
+                    tooltip.style("left", (event.pageX + 10) + "px").style("top", (event.pageY - 20) + "px");
+                })
+                .on("mouseout", (event) => {
+                    tooltip.transition().duration(500).style("opacity", 0);
+                    d3.select(event.currentTarget).attr("r", 3).attr("stroke-width", 1);
+                });
+        }
+        function updateDashboard() {
+            let sY = d3.selectAll('.year-filter:checked').nodes().map(cb => cb.value);
+            let sM = d3.selectAll('.month-filter:checked').nodes().map(cb => cb.value);
+
+            let filtered = originalData.filter(d => {
+                const [y, m] = d.date.split('-');
+                const yMatch = sY.length === 0 || sY.includes(y);
+                const mMatch = sM.length === 0 || sM.includes(m);
+                return yMatch && mMatch;
+            });
+
+            d3.select('.revenue-chart-area').selectAll("*").remove();
+            if(filtered.length > 0) {
+                drawBarChart(filtered)
+                drawCard(filtered);
+            };
+        }
+    </script>
+</body>
+</html>
