@@ -1,4 +1,3 @@
-```markdown
 # Ecommerce Performance Analysis
 
 This project provides a comprehensive dashboard for analyzing ecommerce performance metrics, including product insights, logistics performance, and overall business KPIs. It features interactive visualizations built with D3.js, a Node.js backend with PostgreSQL database, and a Dockerized setup for easy deployment.
