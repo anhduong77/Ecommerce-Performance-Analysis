@@ -11,11 +11,18 @@
             --text-color: #333;
         }
 
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: var(--bg-color);
             margin: 0;
             padding: 0;
+            display: flex;
+            flex-direction: column;
         }
 
         /* Tiêu đề chính */
@@ -23,31 +30,36 @@
             background-color: var(--header-color);
             color: white;
             text-align: center;
-            padding: 10px 0;
-            font-size: 24px;
+            padding: 8px 0;
+            font-size: 22px;
             font-weight: bold;
-            margin-bottom: 20px;
+            flex-shrink: 0;
         }
 
         /* Layout Grid chính */
         .dashboard-container {
             display: grid;
-            grid-template-columns: 200px 1fr; /* Cột lọc 200px, phần còn lại cho biểu đồ */
-            gap: 20px;
-            padding: 0 20px 20px 20px;
+            grid-template-columns: 200px 1fr;
+            gap: 12px;
+            padding: 12px;
+            flex: 1;
+            min-height: 0;
+            align-items: stretch;
         }
 
         /* Cột bên trái (Filters) */
         .side-panel {
             display: flex;
             flex-direction: column;
-            gap: 20px;
+            gap: 12px;
+            overflow-y: auto;
+            min-height: 0;
         }
         /* Container bao ngoài của Months card */
         #month-container {
             display: flex;
             flex-direction: column;
-            max-height: 250px; 
+            max-height: 190px; 
         }
 
       
@@ -71,7 +83,7 @@
         .card {
             background: var(--card-bg);
             border-radius: 4px;
-            padding: 15px;
+            padding: 8px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
 
@@ -97,13 +109,21 @@
         .main-panel {
             display: flex;
             flex-direction: column;
-            gap: 20px;
+            gap: 12px;
+            overflow-y: auto;
+            min-height: 0;
+        }
+
+        .main-panel .card {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
         }
 
         .chart-container {
-            width: 100%;
-            height: auto;
-            text-align: center;
+            flex: 1;
+            min-height: 0;
         }
 
         .chart-title {
@@ -114,8 +134,9 @@
 
         /* Responsive cho SVG */
         svg {
-            max-width: 100%;
-            height: auto;
+            width: 100%;
+            height: 100%;
+            display: block;
         }
         .kpi-container {
             display: flex;
@@ -171,9 +192,47 @@
             color: #333;
             z-index: 9999;
         }
+        
+        .dashboard-nav {
+            display: flex;
+            align-items: center;
+            background: #1e2a3a;
+            padding: 0 16px;
+            height: 44px;
+            gap: 4px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .dashboard-nav a {
+            color: rgba(255,255,255,0.65);
+            text-decoration: none;
+            padding: 0 16px;
+            height: 44px;
+            line-height: 44px;
+            font-size: 13.5px;
+            font-weight: 500;
+            border-bottom: 3px solid transparent;
+            box-sizing: border-box;
+            transition: color 0.2s, border-color 0.2s, background 0.2s;
+            white-space: nowrap;
+        }
+        .dashboard-nav a:hover {
+            color: #fff;
+            background: rgba(255,255,255,0.07);
+        }
+        .dashboard-nav a.active {
+            color: #fff;
+            border-bottom-color: #e55353;
+        }
     </style>
 </head>
 <body>
+
+    <nav class="dashboard-nav">
+        <a href="performance_dashboard.html" class="active">Performance Overview</a>
+        <a href="product_performance.html">Product Insights</a>
+        <a href="logistic_performance.html">Logistics Performance</a>
+    </nav>
 
     <div class="dashboard-header">Performance Overview</div>
 
@@ -405,6 +464,7 @@
                 drawCard(filtered);
             };
         }
+        if (window !== window.top) document.querySelector('.dashboard-nav').style.display = 'none';
     </script>
 </body>
 </html>

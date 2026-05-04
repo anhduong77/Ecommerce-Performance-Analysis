@@ -1,13 +1,97 @@
 <!DOCTYPE html>
 <html>
-    <head></head>
-    <body>
-        <script>
-            fetch("http://localhost:4000/product")
-            .then(res => res.json())
-            .then(data => {
-                console.log(data)
-            })
-        </script>
-    </body>
+<head>
+    <title>Dashboard Hub</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { height: 100vh; overflow: hidden; display: flex; flex-direction: column; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+
+        .dashboard-nav {
+            display: flex;
+            align-items: center;
+            background: #1e2a3a;
+            padding: 0 16px;
+            height: 44px;
+            gap: 4px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+            flex-shrink: 0;
+        }
+        .dashboard-nav a {
+            color: rgba(255,255,255,0.65);
+            text-decoration: none;
+            padding: 0 16px;
+            height: 44px;
+            line-height: 44px;
+            font-size: 13.5px;
+            font-weight: 500;
+            border-bottom: 3px solid transparent;
+            box-sizing: border-box;
+            transition: color 0.15s, border-color 0.15s, background 0.15s;
+            white-space: nowrap;
+            cursor: pointer;
+        }
+        .dashboard-nav a:hover { color: #fff; background: rgba(255,255,255,0.07); }
+        .dashboard-nav a[data-target="frame-perf"].active { color: #fff; border-bottom-color: #e55353; }
+        .dashboard-nav a[data-target="frame-prod"].active { color: #fff; border-bottom-color: #9b7fd4; }
+        .dashboard-nav a[data-target="frame-logi"].active { color: #fff; border-bottom-color: #3aaa8c; }
+
+        .frame-container { flex: 1; position: relative; }
+        iframe {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border: none;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.15s ease;
+        }
+        iframe.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+    </style>
+</head>
+<body>
+    <nav class="dashboard-nav">
+        <a href="#" data-target="frame-perf" class="active">Performance Overview</a>
+        <a href="#" data-target="frame-prod">Product Insights</a>
+        <a href="#" data-target="frame-logi">Logistics Performance</a>
+    </nav>
+    <div class="frame-container">
+        <iframe id="frame-perf" class="active" src="performance_dashboard.html"></iframe>
+        <iframe id="frame-prod" data-src="product_performance.html"></iframe>
+        <iframe id="frame-logi" data-src="logistic_performance.html"></iframe>
+    </div>
+    <script>
+        const links = document.querySelectorAll('.dashboard-nav a');
+        const frames = document.querySelectorAll('iframe');
+
+        function switchTo(targetId) {
+            const frame = document.getElementById(targetId);
+            if (frame.dataset.src) {
+                frame.src = frame.dataset.src;
+                delete frame.dataset.src;
+            }
+            links.forEach(a => a.classList.toggle('active', a.dataset.target === targetId));
+            frames.forEach(f => f.classList.toggle('active', f.id === targetId));
+        }
+
+        links.forEach(link => link.addEventListener('click', e => {
+            e.preventDefault();
+            switchTo(link.dataset.target);
+        }));
+
+        // After the first dashboard is interactive, silently preload the rest
+        document.getElementById('frame-perf').addEventListener('load', () => {
+            setTimeout(() => {
+                frames.forEach(f => {
+                    if (f.dataset.src) {
+                        f.src = f.dataset.src;
+                        delete f.dataset.src;
+                    }
+                });
+            }, 800);
+        });
+    </script>
+</body>
 </html>

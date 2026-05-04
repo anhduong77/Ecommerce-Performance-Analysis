@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
     <head>
+        <meta charset="UTF-8">
         <title>Product Performance</title>
         <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
         <style>
@@ -9,263 +10,309 @@
                 --bg-color: #ffffff;
             }
 
-            body { font-family: sans-serif; background-color: #f0f0f0; margin: 0; }
+            /* Prevent body scroll and set height to 100% */
+            html, body { 
+                height: 100%; 
+                margin: 0; 
+                overflow: hidden; 
+                font-family: sans-serif; 
+                background-color: #f0f0f0; 
+            }
 
-            /* Header giống ảnh */
             .header {
                 background-color: var(--purple-header);
                 color: white;
                 text-align: center;
-                padding: 15px;
-                font-size: 24px;
+                padding: 1vh;
+                font-size: 20px;
                 font-weight: bold;
-                margin-bottom: 10px;
+                height: 5vh;
+            }
+
+            .dashboard-nav {
+                display: flex;
+                align-items: center;
+                background: #1e2a3a;
+                padding: 0 16px;
+                height: 44px;
+                gap: 4px;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+                font-family: sans-serif;
+            }
+            .dashboard-nav a {
+                color: rgba(255,255,255,0.65);
+                text-decoration: none;
+                padding: 0 16px;
+                height: 44px;
+                line-height: 44px;
+                font-size: 13.5px;
+                font-weight: 500;
+                border-bottom: 3px solid transparent;
+                box-sizing: border-box;
+                transition: color 0.2s, border-color 0.2s, background 0.2s;
+                white-space: nowrap;
+            }
+            .dashboard-nav a:hover {
+                color: #fff;
+                background: rgba(255,255,255,0.07);
+            }
+            .dashboard-nav a.active {
+                color: #fff;
+                border-bottom-color: #9b7fd4;
             }
 
             .dashboard-container {
                 display: grid;
-                grid-template-areas: 
-                    "treemap treemap"
+                grid-template-areas:
+                    "filters treemap"
                     "filters chart";
-                grid-template-columns: 200px 1fr;
-                gap: 15px;
+                grid-template-columns: 220px 1fr;
+                grid-template-rows: 1fr 1fr;
+                gap: 10px;
                 padding: 10px;
+                height: calc(90vh - 44px); /* Remaining space after header + nav */
             }
 
-            .treemap-area { grid-area: treemap; background: white; padding: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-            .side-panel { grid-area: filters; display: flex; flex-direction: column; gap: 10px; }
-            .chart-area { grid-area: chart; background: white; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+            .treemap-area { 
+                grid-area: treemap; 
+                background: white; 
+                padding: 10px; 
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                display: flex;
+                flex-direction: column;
+            }
+
+            .side-panel { 
+                grid-area: filters; 
+                display: flex; 
+                flex-direction: column; 
+                gap: 10px; 
+                overflow-y: auto; 
+            }
+
+            .chart-area { 
+                grid-area: chart; 
+                background: white; 
+                padding: 10px; 
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                display: flex;
+                flex-direction: column;
+            }
+
+            /* Responsive SVGs */
+            svg { width: 100%; height: 100%; display: block; }
 
             .card { background: #e0e0e0; padding: 10px; border-radius: 4px; }
-            .card h3 { margin: 0 0 10px 0; font-size: 14px; text-align: center; }
+            .card h3 { margin: 0 0 5px 0; font-size: 13px; text-align: center; }
             
+            .slider-container { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+            input[type=range] { width: 100%; cursor: pointer; }
+            .slider-val { font-weight: bold; color: #555; font-size: 12px; }
+
             .scroll-area { 
-                max-height: 150px; overflow-y: auto; background: #f9f9f9; padding: 5px; 
+                max-height: 200px; overflow-y: auto; background: #f9f9f9; padding: 5px; 
                 border: 1px solid #ccc;
             }
-            
-            .checkbox-row { display: flex; align-items: center; gap: 8px; font-size: 13px; margin-bottom: 3px; }
+            .checkbox-row { display: flex; align-items: center; gap: 8px; font-size: 12px; margin-bottom: 3px; }
 
-            /* Chart Styles */
+            .rev-stat { display: flex; justify-content: space-between; align-items: baseline; padding: 5px 0; border-bottom: 1px solid #d0d0d0; }
+            .rev-stat:last-child { border-bottom: none; }
+            .rev-label { font-size: 11px; color: #666; }
+            .rev-value { font-size: 13px; font-weight: bold; color: #4a4a6a; }
+
             .line-path { fill: none; stroke: #007bff; stroke-width: 2.5; }
             .grid line { stroke: #e0e0e0; stroke-dasharray: 2,2; }
+
+            .tooltip {
+                position: absolute;
+                padding: 8px;
+                background: rgba(0, 0, 0, 0.85);
+                color: #fff;
+                border-radius: 5px;
+                pointer-events: none;
+                font-size: 11px;
+                display: none;
+                z-index: 1000;
+            }
+            .dot { fill: #007bff; stroke: #fff; stroke-width: 2px; cursor: pointer; }
         </style>
     </head>
     <body>
+        <nav class="dashboard-nav">
+            <a href="performance_dashboard.html">Performance Overview</a>
+            <a href="product_performance.html" class="active">Product Insights</a>
+            <a href="logistic_performance.html">Logistics Performance</a>
+        </nav>
+        <div id="tooltip" class="tooltip"></div>
         <div class="header">Product Insights</div>
-            
-            <div class="dashboard-container">
-                <div class="treemap-area"></div>
-                
-                <div class="side-panel">
-                    <div id="year-container" class="card"></div>
-                    <div id="month-container" class="card"></div>
+       
+        <div class="dashboard-container">
+            <div class="side-panel">
+                <div class="card">
+                    <h3>Top Products Volume</h3>
+                    <div class="slider-container">
+                        <input type="range" id="top-n-slider" min="5" max="50" value="15" step="1">
+                        <div class="slider-val">Showing Top: <span id="n-value">15</span></div>
+                    </div>
                 </div>
-                
-                <div class="chart-area">
-                    <div id="chart-title" style="font-size: 14px; margin-bottom: 10px;">Sum of price by Year, Quarter and Month</div>
-                    <div class="bar-area"></div> </div>
+                <div id="year-container" class="card"></div>
+                <div id="month-container" class="card"></div>
+                <div class="card">
+                    <h3>Revenue Summary</h3>
+                    <div class="rev-stat">
+                        <span class="rev-label">Total Revenue</span>
+                        <span id="rev-total" class="rev-value">—</span>
+                    </div>
+                    <div class="rev-stat">
+                        <span class="rev-label">Orders</span>
+                        <span id="rev-orders" class="rev-value">—</span>
+                    </div>
+                    <div class="rev-stat">
+                        <span class="rev-label">Avg Order Value</span>
+                        <span id="rev-aov" class="rev-value">—</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="treemap-area">
+                <div style="font-size: 13px; font-weight: bold; margin-bottom: 5px;">Top Categories by Revenue</div>
+                <div id="treemap-svg-container" style="flex-grow: 1;"></div>
+            </div>
+            
+            <div class="chart-area">
+                <div style="font-size: 13px; font-weight: bold; margin-bottom: 5px;">Revenue Timeline</div>
+                <div id="line-svg-container" style="flex-grow: 1;"></div> 
+            </div>
         </div>
+
         <script>
+            // --- Logic remains the same, updated draw functions for container sizing ---
             const years = [2016, 2017, 2018];
             const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
             const monthMap = {"Jan":"01", "Feb":"02", "Mar":"03", "Apr":"04", "May":"05", "Jun":"06", "Jul":"07", "Aug":"08", "Sep":"09", "Oct":"10", "Nov":"11", "Dec":"12"};
+            let originalData = [];
+            let selectedCategory = null;
+
+            document.getElementById("top-n-slider").oninput = function() {
+                document.getElementById("n-value").innerHTML = this.value;
+                updateDashboard();
+            }
 
             formatTickBox(months, "month-container", "Months");
             formatTickBox(years, "year-container", "Years");
-            let originalData = [];
-            let currentData = [];
-            function formatTickBox(data, id, label) {
-                const container = d3.select(`#${id}`);
-                
-                // Thêm tiêu đề cố định
-                container.append("h3").text(label);
-                
 
-                const scrollArea = container.append("div")
-                                            .attr("class", "scroll-area")
-                                            .style("max-height", "150px"); // Độ cao bạn muốn cho danh sách
-
-                const rows = scrollArea.selectAll(".checkbox-row")
-                                        .data(data)
-                                        .join("label")
-                                        .attr("class", "checkbox-row");
-
-                rows.append("input")
-                    .attr("type", "checkbox")
-                    .attr("class", `${id.split("-")[0]}-filter`)
-                    .attr("value", d => id === "month-container" ? monthMap[d] : d)
-                    .on("change", () => updateDashboard());
-                
-                rows.append("span").text(d => d);
-            }
-            
-            let selectedCategory = null;
             fetch("http://localhost:4000/product")
             .then(res => res.json())
             .then(data => {
-                console.log(data);
-                //----clean data-----//
                 originalData = formatData(data);
-                currentData = originalData;
-                
-                drawTreemap(originalData);
-                drawLineChart(originalData, '');
+                updateDashboard();
+            });
 
-            })
-
-            //------format data-----//
-            
             function formatData(data){
-                // treat the missing label with unknown category
-                const filteredData = data.filter(row => (row.order_approved_at && !isNaN(row.price)))
-                
-                const cleanedData = filteredData.map(d => {
+                return data.filter(row => (row.order_approved_at && !isNaN(row.price))).map(d => {
                     const date = new Date(d.order_approved_at)
-                    const category = (d.product_category === '') ? "unknown" : d.product_category;
                     return {
-                        "product_category": category,
+                        "product_category": d.product_category === '' ? "unknown" : d.product_category,
                         "price": +d.price,
                         "date": `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`
                     }
                 });
-                
-                // const cleanedData = filteredData.filter(row => (row.date && !isNaN(row.price)));
-                return cleanedData;
+            }
+
+            function formatTickBox(data, id, label) {
+                const container = d3.select(`#${id}`);
+                container.append("h3").text(label);
+                const scrollArea = container.append("div").attr("class", "scroll-area");
+                scrollArea.selectAll(".checkbox-row").data(data).join("label").attr("class", "checkbox-row")
+                    .call(r => r.append("input").attr("type", "checkbox").attr("class", `${id.split("-")[0]}-filter`).attr("value", d => id === "month-container" ? monthMap[d] : d).on("change", updateDashboard))
+                    .call(r => r.append("span").text(d => d));
             }
 
             function drawTreemap(data) {
-                
-                const rolledUpData = d3.rollup(
-                    data,
-                    v => d3.sum(v, d => d.price),
-                    d => d.product_category
-                );
+                const container = document.getElementById("treemap-svg-container");
+                const width = container.clientWidth;
+                const height = container.clientHeight;
+                d3.select("#treemap-svg-container").selectAll("*").remove();
 
-                
-                const hierarchyData = {
-                    name: "root",
-                    children: Array.from(rolledUpData, ([name, value]) => ({ name, value }))
-                }; 
+                const topN = +document.getElementById("top-n-slider").value;
+                let rolledUpData = d3.rollup(data, v => d3.sum(v, d => d.price), d => d.product_category);
+                let dataArray = Array.from(rolledUpData, ([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value).slice(0, topN);
+                const totalVisibleRevenue = d3.sum(dataArray, d => d.value);
 
-                const root = d3.hierarchy(hierarchyData)
-                    .sum(d => d.value) 
-                    .sort((a, b) => b.value - a.value);
+                const root = d3.hierarchy({ name: "root", children: dataArray }).sum(d => d.value).sort((a, b) => b.value - a.value);
+                d3.treemap().size([width, height]).paddingOuter(3).paddingInner(2)(root);
 
-                const width = 800, height = 200;
+                const svg = d3.select("#treemap-svg-container").append("svg").attr("viewBox", `0 0 ${width} ${height}`);
+                const colorScale = d3.scaleOrdinal(d3.schemePastel1);
+                const nodes = svg.selectAll("g").data(root.leaves()).join("g").attr("transform", d => `translate(${d.x0},${d.y0})`);
 
-                
-                d3.treemap()
-                    .size([width, height])
-                    .paddingOuter(3)
-                    .paddingInner(1)
-                    (root);
-
-                const svg = d3.select(".treemap-area")
-                    .append("svg")
-                    .attr("viewBox", `0 0 ${width} ${height}`)
-                    .style("font", "10px sans-serif");
-
-                // Tạo Scale màu để mỗi category có một màu riêng
-                const colorScale = d3.scaleOrdinal(d3.schemeSet3);
-
-                const nodes = svg.selectAll("g")
-                    .data(root.leaves())
-                    .join("g")
-                    .attr("class", "treemap-node")
-                    .attr("transform", d => `translate(${d.x0},${d.y0})`);
-
-        
                 nodes.append("rect")
-                    .attr("width", d => d.x1 - d.x0)
-                    .attr("height", d => d.y1 - d.y0)
-                    .attr("fill", d => colorScale(d.data.name))
-                    .attr("stroke", "#fff")
-                    .on("click", function(event, d) {
-                        const clickedCategory = d.data.name;
+                    .attr("width", d => d.x1 - d.x0).attr("height", d => d.y1 - d.y0)
+                    .attr("fill", d => d.data.name === selectedCategory ? "#6c5ce7" : colorScale(d.data.name))
+                    .attr("stroke", "#fff").on("click", (e, d) => { selectedCategory = (selectedCategory === d.data.name) ? null : d.data.name; updateDashboard(); });
 
-                        if (selectedCategory === clickedCategory) {
-                            // Click lại cái cũ -> Bỏ chọn
-                            selectedCategory = null;
-                            d3.selectAll(".treemap-node rect").style("stroke", "#fff").style("stroke-width", "1px");
-                        } else {
-                            // Chọn cái mới
-                            selectedCategory = clickedCategory;
-                            d3.selectAll(".treemap-node rect").style("stroke", "#fff").style("stroke-width", "1px");
-                            d3.select(this).style("stroke", "#000").style("stroke-width", "2px");
-                        }
-                        
-                        
-                        updateDashboard();
-                    });
-
-                nodes.append("text")
-                    .attr("x", 5)
-                    .attr("y", 15)
-                    .text(d => (d.x1 - d.x0 > 40) ? d.data.name : "") 
-                    .attr("fill", "white");
-                    
-                
-                nodes.append("title")
-                    .text(d => `${d.data.name}: ${d3.format(",.2f")(d.value)}`);
+                const text = nodes.append("text").attr("x", 5).attr("y", 15).attr("fill", d => d.data.name === selectedCategory ? "white" : "#333").style("pointer-events", "none").style("font-size", "10px");
+                text.append("tspan").text(d => (d.x1 - d.x0 > 50) ? d.data.name.replaceAll('_', ' ') : "").attr("x", 5).style("font-weight", "bold");
+                text.append("tspan").attr("x", 5).attr("dy", "1.2em").text(d => (d.x1 - d.x0 > 70 && d.y1 - d.y0 > 30) ? `$${d3.format(",.0f")(d.data.value)}` : "");
+                text.append("tspan").attr("x", 5).attr("dy", "1.2em").style("fill-opacity", 0.7).text(d => (d.x1 - d.x0 > 70 && d.y1 - d.y0 > 45) ? `${((d.data.value / totalVisibleRevenue) * 100).toFixed(1)}%` : "");
             }
-            function drawLineChart(data) {
-                const width = 800, height = 200;
-                const margin = {top: 20, left: 60, bottom: 50, right: 30};
-                d3.select(".bar-area").selectAll("*").remove();
 
-                if (data.length === 0) return; 
+            function drawLineChart(data) {
+                const container = document.getElementById("line-svg-container");
+                const width = container.clientWidth;
+                const height = container.clientHeight;
+                const margin = {top: 10, left: 40, bottom: 30, right: 20};
+                d3.select("#line-svg-container").selectAll("*").remove();
+                if (data.length === 0) return;
 
                 const iW = width - margin.left - margin.right;
                 const iH = height - margin.top - margin.bottom;
-
-                const svg = d3.select(".bar-area").append("svg")
-                            .attr("viewBox", `0 0 ${width} ${height}`);
+                const svg = d3.select("#line-svg-container").append("svg").attr("viewBox", `0 0 ${width} ${height}`);
                 const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
 
-      
-                let chartData = Array.from(d3.rollup(data, v => d3.sum(v, d => d.price), d => d.date), 
-                            ([date, revenue]) => ({ date, revenue }))
-                            .sort((a, b) => new Date(a.date) - new Date(b.date));
-
+                let chartData = Array.from(d3.rollup(data, v => d3.sum(v, d => d.price), d => d.date), ([date, revenue]) => ({ date, revenue })).sort((a, b) => new Date(a.date) - new Date(b.date));
                 const x = d3.scalePoint().domain(chartData.map(d => d.date)).range([0, iW]);
                 const y = d3.scaleLinear().domain([0, d3.max(chartData, d => d.revenue) * 1.1]).range([iH, 0]);
 
-                // Trục và Lưới
                 g.append("g").attr("class", "grid").call(d3.axisLeft(y).ticks(5).tickSize(-iW).tickFormat(""));
                 g.append("g").attr("transform", `translate(0,${iH})`).call(d3.axisBottom(x).tickValues(x.domain().filter((d,i) => !(i % 6))));
-                g.append("g").call(d3.axisLeft(y).ticks(5).tickFormat(d3.format(".2s")));
+                g.append("g").call(d3.axisLeft(y).ticks(5).tickFormat(d3.format(".1s")));
 
-                const line = d3.line().x(d => x(d.date)).y(d => y(d.revenue)).curve(d3.curveMonotoneX);
+                g.append("path").datum(chartData).attr("class", "line-path").attr("d", d3.line().x(d => x(d.date)).y(d => y(d.revenue)).curve(d3.curveMonotoneX));
 
-                g.append("path").datum(chartData).attr("class", "line-path").attr("d", line);
+                const tooltip = d3.select("#tooltip");
+                g.selectAll(".dot").data(chartData).join("circle").attr("class", "dot").attr("cx", d => x(d.date)).attr("cy", d => y(d.revenue)).attr("r", 4)
+                    .on("mouseover", function(e, d) {
+                        tooltip.style("display", "block").html(`<strong>${d.date}</strong><br/>$${d3.format(",.2f")(d.revenue)}`);
+                        d3.select(this).transition().duration(100).attr("r", 6).style("fill", "#ffc107");
+                    })
+                    .on("mousemove", e => tooltip.style("left", (e.pageX + 10) + "px").style("top", (e.pageY - 20) + "px"))
+                    .on("mouseout", function() {
+                        tooltip.style("display", "none");
+                        d3.select(this).transition().duration(100).attr("r", 4).style("fill", "#007bff");
+                    });
             }
-
-            const dataCache = new Map();
 
             function updateDashboard() {
                 const sY = Array.from(document.querySelectorAll('.year-filter:checked')).map(cb => cb.value);
                 const sM = Array.from(document.querySelectorAll('.month-filter:checked')).map(cb => cb.value);
-                
-                
-                const cacheKey = `${sY.join()}-${sM.join()}-${selectedCategory}`;
-                
-                // 2. Faster filtering using Set for O(1) lookups
-                const yearSet = new Set(sY);
-                const monthSet = new Set(sM);
-
                 const filtered = originalData.filter(d => {
                     const [y, m] = d.date.split('-');
-                    const yMatch = yearSet.size === 0 || yearSet.has(y);
-                    const mMatch = monthSet.size === 0 || monthSet.has(m);
-                    const cMatch = !selectedCategory || d.product_category === selectedCategory;
-                    return yMatch && mMatch && cMatch;
+                    return (sY.length === 0 || sY.includes(y)) && (sM.length === 0 || sM.includes(m));
                 });
+                const totalRevenue = d3.sum(filtered, d => d.price);
+                const orderCount = filtered.length;
+                document.getElementById('rev-total').textContent = '$' + d3.format(',.0f')(totalRevenue);
+                document.getElementById('rev-orders').textContent = d3.format(',')(orderCount);
+                document.getElementById('rev-aov').textContent = orderCount > 0 ? '$' + d3.format(',.2f')(totalRevenue / orderCount) : '—';
 
-                drawLineChart(filtered);
+                drawTreemap(filtered);
+                drawLineChart(filtered.filter(d => !selectedCategory || d.product_category === selectedCategory));
             }
-        </script>
 
-        
+            // Redraw on window resize
+            window.addEventListener('resize', updateDashboard);
+            if (window !== window.top) document.querySelector('.dashboard-nav').style.display = 'none';
+        </script>
     </body>
 </html>

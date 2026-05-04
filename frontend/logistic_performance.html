@@ -1,234 +1,443 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html>
     <head>
+        <meta charset="UTF-8">
         <title>Logistics Performance</title>
-        <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>        
-    </head>
+        <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
         <style>
-        .dashboard-wrapper {
-                display: flex;
-                flex-direction: row; 
-                gap: 20px;           
-                padding: 20px;
-                align-items: flex-start;
-        }
+        :root { --teal: #2e7d6e; --bg: #f4f4f4; --card: #ffffff; }
 
-        #treemap {
-            flex: 0 0 300px; 
-            background: #f9f9f9;
-        }
-
-        .revenue-chart{
-            flex: 1
-        }
-        .right-panel {
+        html, body { height: 100%; overflow: hidden; margin: 0; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg);
             display: flex;
-            flex-direction: column; 
-            gap: 20px;
-            flex: 1;
+            flex-direction: column;
         }
-        .revenue-chart-container {
-            height: 300px;
+
+        /* ── Nav ── */
+        .dashboard-nav {
+            display: flex;
+            align-items: center;
+            background: #1e2a3a;
+            padding: 0 16px;
+            height: 44px;
+            gap: 4px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+            flex-shrink: 0;
+        }
+        .dashboard-nav a {
+            color: rgba(255,255,255,0.65);
+            text-decoration: none;
+            padding: 0 16px;
+            height: 44px;
+            line-height: 44px;
+            font-size: 13.5px;
+            font-weight: 500;
+            border-bottom: 3px solid transparent;
+            box-sizing: border-box;
+            transition: color 0.2s, border-color 0.2s, background 0.2s;
+            white-space: nowrap;
+        }
+        .dashboard-nav a:hover { color: #fff; background: rgba(255,255,255,0.07); }
+        .dashboard-nav a.active { color: #fff; border-bottom-color: #3aaa8c; }
+
+        /* ── Header ── */
+        .page-header {
+            background-color: var(--teal);
+            color: white;
+            text-align: center;
+            padding: 8px 0;
+            font-size: 22px;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+
+        /* ── Main grid ── */
+        .dashboard-container {
+            flex: 1;
+            min-height: 0;
+            display: grid;
+            grid-template-columns: 220px 1fr;
+            gap: 12px;
+            padding: 12px;
+        }
+
+        /* ── Side panel ── */
+        .side-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            min-height: 0;
+        }
+
+        /* SLIDER CARD UPDATES: Compact Height */
+        .slider-card {
+            flex: 0 0 75px !important; /* Forces the height to be small */
+            padding: 6px 12px !important;
+            overflow: hidden;
+        }
+        .slider-card .card-title {
+            margin-bottom: 4px;
+            padding-bottom: 2px;
+            font-size: 12px;
+        }
+        .slider-container { 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            gap: 0px; 
+        }
+        input[type=range] { width: 100%; cursor: pointer; accent-color: var(--teal); margin: 2px 0; }
+        .slider-val { font-size: 11px; font-weight: bold; color: #555; }
+
+        /* ── Main panel ── */
+  .main-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-height: 0;
+    min-width: 0; /* CRITICAL: allows flex children to shrink/scroll */
+}
+
+.panel-card {
+    flex: 1;
+    min-height: 0;
+    min-width: 0; /* CRITICAL: allows the card to respect parent boundaries */
+    display: flex;
+    flex-direction: column;
+    background: var(--card);
+    border-radius: 4px;
+    padding: 8px 12px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.scatter-container {
+    flex: 1;
+    min-height: 0;
+    overflow-x: auto; /* Enable horizontal scroll */
+    overflow-y: hidden; /* Prevent vertical jitter if height is fixed */
+    width: 100%;
+}
+
+        .card-title {
+            font-size: 13px;
+            font-weight: bold;
+            color: #555;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+            margin-bottom: 5px;
+            flex-shrink: 0;
+        }
+
+        /* ── Chart containers ── */
+        #treemap-container {
+            flex: 1;
+            min-height: 0;
+        }
+
+        .bar-chart-container {
+            flex: 1;
+            min-height: 0;
             overflow-y: auto;
-            border: 1px solid #ddd;
+            overflow-x: hidden;
         }
 
 
         .average-shipment-time {
-            width: 1000px;
-            overflow-x: scroll;
+            width: fit-content;
+        }
+        svg { display: block; }
+
+        /* ── Tooltip ── */
+        .tooltip {
+            position: fixed;
+            padding: 7px 12px;
+            background: rgba(255,255,255,0.97);
             border: 1px solid #ddd;
+            border-radius: 4px;
+            pointer-events: none;
+            font-size: 12px;
+            color: #333;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            z-index: 9999;
+            display: none;
         }
         </style>
+    </head>
 
     <body>
-        <div class="dashboard-wrapper">
-            <div id="treemap"></div>
+        <nav class="dashboard-nav">
+            <a href="performance_dashboard.html">Performance Overview</a>
+            <a href="product_performance.html">Product Insights</a>
+            <a href="logistic_performance.html" class="active">Logistics Performance</a>
+        </nav>
+        <div class="page-header">Logistics Performance</div>
+        <div id="tooltip" class="tooltip"></div>
 
-            <div class="right-panel">
-                <div class="revenue-chart-container">
-                    <div class="revenue-chart"></div>
+        <div class="dashboard-container">
+            <div class="side-panel">
+                <div class="panel-card slider-card">
+                    <div class="card-title">Top Cities</div>
+                    <div class="slider-container">
+                        <input type="range" id="top-n-slider" min="5" max="100" value="20" step="1">
+                        <div class="slider-val">Showing Top: <span id="n-value">20</span></div>
+                    </div>
                 </div>
+                <div class="panel-card" style="flex: 1; min-height: 0;">
+                    <div class="card-title">Review Score Distribution</div>
+                    <div id="treemap-container"></div>
+                </div>
+            </div>
 
-                <div class="average-shipment-time"></div>
+            <div class="main-panel">
+                <div class="panel-card">
+                    <div class="card-title" id="bar-title">Top 20 Cities by Review Score</div>
+                    <div class="bar-chart-container">
+                        <div class="revenue-chart"></div>
+                    </div>
+                </div>
+                <div class="panel-card">
+                    <div class="card-title" id="scatter-title">Average Shipment Delay — Top 20 Cities (days vs expected)</div>
+                    <div class="scatter-container">
+                        <div class="average-shipment-time"></div>
+                    </div>
+                </div>
             </div>
         </div>
-            
-        </div>
+
         <script>
-            fetch("http://localhost:4000/shipments")
-            .then(res => res.json())
-            .then(data => {
-                console.log(data);
-                filteredData = data.filter(d => (d.geolocation_city && !(d.datediff === null) && !isNaN(d.review_score) && !isNaN(d.price)));
-                drawTreemap(filteredData);
-                drawBarChart(filteredData);
-                drawScatterChart(filteredData);
-            })
+            const tooltip = d3.select("#tooltip");
+            let allData = [];
 
-        function drawTreemap(data) {
-            d3.select("#treemap").selectAll("*").remove();
+            const slider = document.getElementById("top-n-slider");
+            const nLabel = document.getElementById("n-value");
 
-            const rolledUpData = d3.rollup(
-                data,
-                v => v.length, 
-                d => d.review_score
-            );
-
-            const hierarchyData = {
-                name: "root",
-                children: Array.from(rolledUpData, ([name, value]) => ({ name, value }))
+            slider.oninput = function () {
+                const n = +this.value;
+                nLabel.textContent = n;
+                document.getElementById("bar-title").textContent = `Top ${n} Cities by Review Score`;
+                document.getElementById("scatter-title").textContent = `Average Shipment Delay — Top ${n} Cities (days vs expected)`;
+                drawBarChart(allData, n);
+                drawScatterChart(allData, n);
             };
 
-            const root = d3.hierarchy(hierarchyData)
-                .sum(d => d.value)
-                .sort((a, b) => b.value - a.value);
+            // Replace this with your actual data source URL
+            fetch("http://localhost:4000/shipments")
+                .then(res => res.json())
+                .then(data => {
+                    allData = data.filter(d =>
+                        d.geolocation_city && d.datediff !== null && !isNaN(d.review_score) && !isNaN(d.price)
+                    );
+                    console.log(allData);
+                    drawTreemap(allData);
+                    drawBarChart(allData, +slider.value);
+                    drawScatterChart(allData, +slider.value);
+                });
 
-            const width = 300, height = 600;
-            
-            d3.treemap()
-                .size([width, height])
-                .paddingInner(2)
-                (root);
+            function showTip(html) {
+                tooltip.style("display", "block").html(html);
+            }
+            function moveTip(e) {
+                tooltip.style("left", (e.clientX + 12) + "px").style("top", (e.clientY - 28) + "px");
+            }
+            function hideTip() {
+                tooltip.style("display", "none");
+            }
 
-            const svg = d3.select("#treemap")
-                .append("svg")
-                .attr("width", width)
-                .attr("height", height)
-                .style("font", "12px sans-serif");
+            function drawTreemap(data) {
+                const container = document.getElementById("treemap-container");
+                const width = container.clientWidth;
+                const height = 480;
 
-            const colorScale = d3.scaleOrdinal()
-                .domain([1, 2, 3, 4, 5])
-                .range(d3.schemeRdYlGn[5]); 
+                d3.select("#treemap-container").selectAll("*").remove();
 
-            const nodes = svg.selectAll("g")
-                .data(root.leaves())
-                .join("g")
-                .attr("transform", d => `translate(${d.x0},${d.y0})`);
+                const rolledUp = d3.rollup(data, v => v.length, d => d.review_score);
+                const root = d3.hierarchy({
+                    name: "root",
+                    children: Array.from(rolledUp, ([name, value]) => ({ name, value }))
+                }).sum(d => d.value).sort((a, b) => b.value - a.value);
 
-            nodes.append("rect")
-                .attr("width", d => d.x1 - d.x0)
-                .attr("height", d => d.y1 - d.y0)
-                .attr("fill", d => colorScale(d.data.name))
-                .attr("stroke", "#fff");
+                d3.treemap().size([width, height]).paddingInner(3).paddingOuter(2)(root);
 
-            nodes.append("text")
-                .attr("x", 4)
-                .attr("y", 14)
-                .text(d => d.x1 - d.x0 > 15 ? d.data.name : ""); 
-        }
-        function drawBarChart(data) {
-            const revenueData = Array.from(
-                d3.rollup(data, v => d3.sum(v, d => d.review_score), d => d.geolocation_city),
-                ([city, revenue]) => ({ city, revenue })
-            ).sort((a, b) => b.revenue - a.revenue);
+                const colorScale = d3.scaleOrdinal()
+                    .domain([1, 2, 3, 4, 5])
+                    .range(d3.schemeRdYlGn[5]);
 
-          
-            const barHeight = 25; 
-            const margin = {top: 20, right: 30, bottom: 40, left: 150};
-            
-           
-            const innerHeight = revenueData.length * barHeight;
-            const totalHeight = innerHeight + margin.top + margin.bottom;
-            const width = 700; 
+                const svg = d3.select("#treemap-container").append("svg")
+                    .attr("width", width).attr("height", height);
 
-            // 3. Select and Setup SVG
-            d3.select(".revenue-chart").selectAll("*").remove();
-            
-            const svg = d3.select(".revenue-chart").append("svg")
-                        .attr("width", width)
-                        .attr("height", totalHeight) 
-                        .attr("viewBox", `0 0 ${width} ${totalHeight}`);
+                const nodes = svg.selectAll("g").data(root.leaves()).join("g")
+                    .attr("transform", d => `translate(${d.x0},${d.y0})`);
 
-            const g = svg.append("g")
-                        .attr("transform", `translate(${margin.left},${margin.top})`);
+                nodes.append("rect")
+                    .attr("width", d => Math.max(0, d.x1 - d.x0))
+                    .attr("height", d => Math.max(0, d.y1 - d.y0))
+                    .attr("fill", d => colorScale(d.data.name))
+                    .attr("stroke", "#fff")
+                    .attr("rx", 3)
+                    .on("mouseover", (e, d) => showTip(`<strong>Score: ${d.data.name}</strong><br/>Orders: ${d3.format(",")(d.data.value)}`))
+                    .on("mousemove", moveTip)
+                    .on("mouseout", hideTip);
 
-         
-            const scaleY = d3.scaleBand()
-                .domain(revenueData.map(d => d.city))
-                .range([0, innerHeight])
-                .padding(0.2);
+                nodes.append("text")
+                    .attr("x", 6).attr("y", 20)
+                    .attr("fill", "#222").style("font-weight", "bold").style("font-size", "14px")
+                    .text(d => (d.x1 - d.x0 > 35) ? `★ ${d.data.name}` : "");
 
-            const scaleX = d3.scaleLinear()
-                .domain([0, d3.max(revenueData, d => d.revenue)])
-                .range([0, width - margin.left - margin.right]);
+                nodes.append("text")
+                    .attr("x", 6).attr("y", 36)
+                    .attr("fill", "#444").style("font-size", "11px")
+                    .text(d => (d.x1 - d.x0 > 50 && d.y1 - d.y0 > 45) ? d3.format(",")(d.data.value) : "");
+            }
 
-            // 5. Draw
-            g.append("g").call(d3.axisLeft(scaleY));
-            
-            g.append("g").call(d3.axisTop(scaleX));
+            function drawBarChart(data, topN = 20) {
+                const topCities = Array.from(
+                    d3.rollup(data, v => ({
+                        "score": d3.sum(v, d => d.review_score),
+                        "revenue": d3.sum(v, d => d.price)
+                    }), d => d.geolocation_city),
+                    ([city, score]) => ({ city, ...score })
+                ).sort((a, b) => b.score - a.score).slice(0, topN);
+                console.log(topCities);
+                const containerEl = document.querySelector(".bar-chart-container");
+                const width = 1200;
+                const barH = 24;
+                const margin = { top: 8, right: 100, bottom: 24, left: 130 };
+                const iW = width - margin.left - margin.right;
+                const totalHeight = Math.max(100, topCities.length * barH + margin.top + margin.bottom);
 
-            g.selectAll("rect")
-                .data(revenueData)
-                .join("rect")
-                .attr("y", d => scaleY(d.city))
-                .attr("x", 0)
-                .attr("height", scaleY.bandwidth())
-                .attr("width", d => scaleX(d.revenue))
-                .attr("fill", "#69b3a2");
-            
-            
-        }
-        function drawScatterChart(data) {
-            // ---- prepare data
-            const shipmentData = Array.from(d3.rollup(data,
-                                            v => d3.mean(v, d => d.datediff),
-                                            d => d.geolocation_city
-            ), ([city, avgDate]) => ({
-                "city": city,
-                "avgDate": avgDate
-            }));
-            console.log("shipment data");
-            console.log(shipmentData);
+                d3.select(".revenue-chart").selectAll("*").remove();
 
-            const barWidth = 25;
-            const width = barWidth * shipmentData.length + 50, height = 400;
-            const margin = {top: 20, right: 30, bottom: 70, left: 50};
-            const iW = width - margin.right - margin.left;
-            const iH = height - margin.top - margin.bottom;
-            
-            
+                const svg = d3.select(".revenue-chart").append("svg")
+                    .attr("width", width).attr("height", totalHeight);
+                const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
 
-            svg = d3.select(".average-shipment-time")
-                        .append("svg")
-                        .attr("width", width).attr("height", height);
-            g = svg.append("g").attr("transform", `translate(${margin.right},${margin.top})`);
+                const scaleY = d3.scaleBand().domain(topCities.map(d => d.city))
+                    .range([0, topCities.length * barH]).padding(0.25);
+                const scaleX = d3.scaleLinear()
+                    .domain([0, d3.max(topCities, d => d.revenue)]).range([0, iW]);
 
-            const scaleX = d3.scaleBand()
-                        .domain(shipmentData.map(d => d.city))
-                        .range([0, barWidth * shipmentData.length])
-                        .padding(0.4);
-            
-            const scaleY = d3.scaleLinear()
-                        .domain([-90, 70])
-                        .range([iH, 0])
-                        ;
-            const colorScale = d3.scaleSequential()
-                                    .domain([-90, 70])
-                                    .interpolator(d3.interpolateGnBu)
-            g.append("g")
-                .call(d3.axisBottom(scaleX)).attr("transform", `translate(0,${iH})`)
-                .selectAll("text").attr("transform", `rotate(-45)`).style("text-anchor", "end")
-                .attr("font-size", "7");
-            g.append("g")
-                .call(d3.axisLeft(scaleY));
-            g.selectAll("circle")
-                .data(shipmentData)
-                .join("circle")
-                .attr("cx", d => scaleX(d.city))
-                .attr("cy", d => scaleY(d.avgDate))
-                .attr("r", 4)
-                .attr("fill", d => colorScale(d.avgDate))
-            g.append("line")
-                .attr("x1", 0)
-                .attr("x2", iW)
-                .attr("y1", scaleY(0))
-                .attr("y2", scaleY(0))
-                .attr("stroke", "gray")
-                .attr("stroke-width", 1)
-                .attr("stroke-dasharray", "4 2");  
+                g.append("g").call(d3.axisLeft(scaleY).tickSize(0))
+                    .select(".domain").remove();
+                
+                g.append("g").attr("transform", `translate(0,${topCities.length * barH})`)
+                    .call(d3.axisBottom(scaleX).ticks(5).tickFormat(d3.format(".1s")))
+                    .select(".domain").remove();
 
-        }
-        </script> 
+                g.selectAll("rect").data(topCities).join("rect")
+                    .attr("y", d => scaleY(d.city))
+                    .attr("x", 0)
+                    .attr("height", scaleY.bandwidth())
+                    .attr("width", d => scaleX(d.revenue))
+                    .attr("fill", "#3aaa8c")
+                    .attr("rx", 2)
+                    .on("mouseover", (e, d) => showTip(`<strong>${d.city}</strong><br/>Total score: ${d3.format(",")(d.revenue)}`))
+                    .on("mousemove", moveTip)
+                    .on("mouseout", hideTip);
+
+                g.selectAll(".bar-label").data(topCities).join("text")
+                    .attr("class", "bar-label")
+                    .attr("x", d => scaleX(d.revenue) + 4)
+                    .attr("y", d => scaleY(d.city) + scaleY.bandwidth() / 2 + 4)
+                    .style("font-size", "10px").attr("fill", "#666")
+                    .text(d => d3.format(",.0f")(d.revenue));
+            }
+
+function drawScatterChart(data, topN = 20) {
+    const shipmentData = Array.from(
+        d3.rollup(data, v => ({
+            "score": d3.sum(v, d => d.review_score),
+            "avgDate": d3.mean(v, d => d.datediff), 
+        }), d => d.geolocation_city),
+        ([city, avgDate]) => ({ city, ...avgDate })
+    )
+    .filter(d => d.avgDate != null)
+    .sort((a, b) => a.score - b.score)
+    .slice(0, topN);
+
+    const containerEl = document.querySelector(".scatter-container");
+
+    const barW = 30; // wider spacing for readability
+    const margin = { top: 20, right: 20, bottom: 80, left: 50 };
+
+    // ✅ Make width grow with data (horizontal scroll)
+    const iW = shipmentData.length * barW;
+    const width = iW + margin.left + margin.right;
+
+    // ✅ Make height FIXED (so vertical scroll only if needed)
+    const height = 300;
+    const iH = height - margin.top - margin.bottom;
+
+    d3.select(".average-shipment-time").selectAll("*").remove();
+
+    const svg = d3.select(".average-shipment-time")
+        .append("svg")
+        .attr("width", width)
+        .attr("height", height);
+
+    const g = svg.append("g")
+        .attr("transform", `translate(${margin.left},${margin.top})`);
+
+    const minVal = d3.min(shipmentData, d => d.avgDate) || 0;
+    const maxVal = d3.max(shipmentData, d => d.avgDate) || 10;
+
+    const scaleX = d3.scaleBand()
+        .domain(shipmentData.map(d => d.city))
+        .range([0, iW])
+        .padding(0.3);
+
+    const scaleY = d3.scaleLinear()
+        .domain([minVal - 2, maxVal + 2])
+        .range([iH, 0])
+        .nice();
+
+    const colorScale = d3.scaleSequential()
+        .domain([maxVal, minVal])
+        .interpolator(d3.interpolateRdYlGn);
+
+    // Y axis
+    g.append("g")
+        .call(d3.axisLeft(scaleY).ticks(5));
+
+    // X axis
+    g.append("g")
+        .attr("transform", `translate(0,${iH})`)
+        .call(d3.axisBottom(scaleX))
+        .selectAll("text")
+        .attr("transform", "rotate(-45)")
+        .style("text-anchor", "end")
+        .style("font-size", "9px");
+
+    // Zero line
+    g.append("line")
+        .attr("x1", 0)
+        .attr("x2", iW)
+        .attr("y1", scaleY(0))
+        .attr("y2", scaleY(0))
+        .attr("stroke", "#bbb")
+        .attr("stroke-dasharray", "4 2");
+
+    // Points
+    g.selectAll("circle")
+        .data(shipmentData)
+        .join("circle")
+        .attr("cx", d => scaleX(d.city) + scaleX.bandwidth() / 2)
+        .attr("cy", d => scaleY(d.avgDate))
+        .attr("r", 5)
+        .attr("fill", d => colorScale(d.avgDate))
+        .attr("stroke", "#fff")
+        .attr("stroke-width", 1.5)
+        .on("mouseover", (e, d) =>
+            showTip(`<strong>${d.city}</strong><br/>Avg delay: ${d3.format(".1f")(d.avgDate)} days`)
+        )
+        .on("mousemove", moveTip)
+        .on("mouseout", hideTip);
+}
+            if (window !== window.top) {
+                const nav = document.querySelector('.dashboard-nav');
+                if(nav) nav.style.display = 'none';
+            }
+        </script>
     </body>
 </html>
