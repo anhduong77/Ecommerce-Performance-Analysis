@@ -54,7 +54,7 @@ This project provides a comprehensive dashboard for analyzing ecommerce performa
 1. **Clone the repository**:
    ```bash
    git clone <repository-url>
-   cd DSDV_prj
+   cd Ecommerce-Performance-Analysis
    ```
 
 2. **Set up environment variables**:
@@ -70,14 +70,19 @@ This project provides a comprehensive dashboard for analyzing ecommerce performa
    ```
 
 4. **Set up the database**:
+   - Collect database from: [data](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce).
    - Ensure PostgreSQL is running.
+   - Export database to db/init/dump.sql
+   ```bash
+   pg_dump --schema-only --no-owner --file=db/init/dump.sql <database_name>
+   ```
    - Run the database initialization script from dump.sql.
 
 5. **Run with Docker Compose**:
    ```bash
    docker-compose up --build
    ```
-   This will start the backend on port 4000 and frontend on port 80.
+   This will start the backend on port 4000 and frontend on port 8080.
 
 ## Usage
 
