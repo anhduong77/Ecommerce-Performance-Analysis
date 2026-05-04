@@ -107,6 +107,11 @@ This project provides a comprehensive dashboard for analyzing ecommerce performa
 3. Commit changes and push.
 4. Submit a pull request.
 
+## Results
+
+<img width="1775" height="936" alt="Screenshot from 2026-05-04 19-34-25" src="https://github.com/user-attachments/assets/0a038977-e9c9-4cfb-834b-608e3782b1a5" />
+
+
 ## License
 
 This project is licensed under the MIT License. See LICENSE file for details.
