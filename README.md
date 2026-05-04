@@ -110,13 +110,17 @@ This project provides a comprehensive dashboard for analyzing ecommerce performa
 ## UI
 - Main page:
 <img width="1150" height="598" alt="Screenshot from 2026-05-04 19-44-36" src="https://github.com/user-attachments/assets/a34239c8-c6be-4c77-996c-5418be3506d0" />
--Other dashboards:
+
+- Other dashboards:
 <img width="1772" height="932" alt="Screenshot from 2026-05-04 19-49-35" src="https://github.com/user-attachments/assets/403b75dc-16a9-40fe-8094-c4889e609eba" />
 <img width="1773" height="938" alt="Screenshot from 2026-05-04 19-50-01" src="https://github.com/user-attachments/assets/189d65de-3e94-4e37-aa6f-9218f368e7e3" />
+
 - Features(Toggle):
 <img width="1773" height="938" alt="Screenshot from 2026-05-04 19-51-08" src="https://github.com/user-attachments/assets/0f788077-d185-4f59-b321-6fed2e10f6ba" />
+
     + Filtered by product (health beauty).
 <img width="1773" height="938" alt="Screenshot from 2026-05-04 19-52-00" src="https://github.com/user-attachments/assets/bfc3970d-663c-4366-88a9-4317b27819f8" />
+
     + Filtered by product and year(2017).
     + Selected the top revenue product.
 
